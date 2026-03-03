@@ -53,8 +53,11 @@ Before using Claw Corps, check your OpenClaw environment:
 cd /tmp
 git clone https://github.com/nbzhaosq/claw-corps.git
 cd claw-corps
-npm install
-npm link  # Makes 'claw-corps' command globally available
+npm install  # Uses your configured npm registry
+npm link     # Makes 'claw-corps' command globally available
+
+**Note**: This project doesn't include lock files (package-lock.json).
+Run `npm install` to generate one with your own registry configuration.
 
 # 2. Check your available agents (in OpenClaw session)
 # Use agents_list tool or check your OpenClaw config
