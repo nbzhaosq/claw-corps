@@ -35,6 +35,98 @@ Init → Assess → Assign → Run → Track → Deliver
 
 ---
 
+## 🤖 For Agent - Quick Setup Guide
+
+**Copy this section to any AI agent to get started with Claw Corps:**
+
+```
+# 🦞 Claw Corps - Agent Quick Start
+
+You now have access to Claw Corps, a multi-agent development orchestration system for OpenClaw.
+
+## Installation
+
+```bash
+# Clone and install
+cd /tmp
+git clone https://github.com/nbzhaosq/claw-corps.git
+cd claw-corps
+npm install
+npm link  # Makes 'claw-corps' command globally available
+```
+
+## Basic Commands
+
+```bash
+# 1. Create a new project
+claw-corps init "项目名称" --description "项目描述" --tool claude-code
+
+# 2. Assess complexity (non-interactive)
+claw-corps assess <PROJECT_ID> \
+  --tech-stack "Node.js React TypeScript" \
+  --features 10 \
+  --needs-ui \
+  --accept
+
+# 3. Assign team
+claw-corps assign <PROJECT_ID> --confirm
+
+# 4. Check status
+claw-corps status <PROJECT_ID>
+claw-corps list
+```
+
+## Key Concepts
+
+- **Project Workflow**: Init → Assess → Assign → Run → Deliver
+- **Complexity Levels**: Simple (0-19) / Medium (20-39) / Complex (40-69) / Enterprise (70+)
+- **Agent Roles**: PM, Architect, Developer, Senior Developer, QA, Designer, DevOps
+- **Auto Selection**: Developer/QA → claude-code (coding), PM/Architect → codemanager (management)
+
+## Data Location
+
+- Projects: `~/.claw-corps/projects/`
+- Each project: `~/.claw-corps/projects/<project-id>/`
+  - meta.json - Project metadata
+  - team.json - Team configuration
+  - progress.json - Progress tracking
+  - logs/ - Execution logs
+
+## Example Workflow
+
+```bash
+# Example: Create a web application
+claw-corps init "Task Manager" \
+  --description "A task management web app with user authentication and real-time updates" \
+  --tool claude-code
+
+# Assess (will generate PROJECT_ID like proj_xxxxxxxx)
+claw-corps assess proj_12345678 \
+  --tech-stack "Next.js React Node.js SQLite" \
+  --features 15 \
+  --integrations 2 \
+  --needs-ui \
+  --high-performance \
+  --accept
+
+# Assign team
+claw-corps assign proj_12345678 --confirm
+
+# In OpenClaw environment, use the integration module:
+# const { runProjectFromClawCorps } = await import('/tmp/claw-corps/src/openclaw-integration.js');
+# await runProjectFromClawCorps('proj_12345678', { codingAgent: 'claude-code' });
+```
+
+## Notes
+
+- Claw Corps uses OpenClaw's native subagents API
+- Developer and QA roles automatically use claude-code for coding tasks
+- Projects are stored locally in `~/.claw-corps/`
+- Use `--accept` or `--confirm` flags for non-interactive mode
+```
+
+---
+
 ## 🚀 Quick Start
 
 ### Installation
@@ -154,6 +246,22 @@ claw-corps run proj_xxx --workflow hybrid --timeout 900
 
 ## 🔧 Configuration
 
+### For Agent: Check Prerequisites
+
+```bash
+# Check if Claw Corps is installed
+which claw-corps
+
+# Check environment
+claw-corps env
+
+# Check available projects
+claw-corps list
+
+# Check specific project
+claw-corps status <PROJECT_ID>
+```
+
 ### OpenClaw Config
 
 Ensure your OpenClaw configuration allows coding agents:
@@ -245,6 +353,90 @@ PM → Architect → Developers → QA
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
+
+---
+
+## 🤖 Agent Best Practices
+
+### When to Use Claw Corps
+
+**Use Claw Corps when:**
+- Building a new software project from scratch
+- Project requires multiple roles (PM + Developer + QA)
+- Need structured project management workflow
+- Want concurrent multi-agent execution
+- Working on Medium+ complexity projects
+
+**Don't use Claw Corps when:**
+- Simple one-off coding tasks
+- Single file modifications
+- Quick fixes or patches
+- Learning/experimental projects
+
+### Recommended Timeout Settings
+
+| Project Complexity | Developer Timeout | QA Timeout |
+|-------------------|------------------|-----------|
+| Simple | 5 minutes | 3 minutes |
+| **Medium** | **15 minutes** | **10 minutes** |
+| Complex | 30 minutes | 15 minutes |
+| Enterprise | 60 minutes | 30 minutes |
+
+### Common Agent Tasks
+
+```bash
+# Task 1: Create a simple CLI tool
+claw-corps init "CLI Tool" --tool claude-code
+claw-corps assess <ID> --tech-stack Node.js --features 3 --accept
+claw-corps assign <ID> --confirm
+
+# Task 2: Create a web application
+claw-corps init "Web App" --tool claude-code --description "Full-stack web app"
+claw-corps assess <ID> \
+  --tech-stack "Next.js React Node.js" \
+  --features 10 \
+  --needs-ui \
+  --accept
+claw-corps assign <ID> --confirm
+
+# Task 3: Create an API service
+claw-corps init "REST API" --tool claude-code
+claw-corps assess <ID> \
+  --tech-stack "Node.js Express PostgreSQL" \
+  --features 8 \
+  --integrations 2 \
+  --high-security \
+  --accept
+claw-corps assign <ID> --confirm
+```
+
+### Troubleshooting for Agents
+
+**Problem: Project not found**
+```bash
+# Solution: List all projects
+claw-corps list
+# Use the correct PROJECT_ID from the list
+```
+
+**Problem: Assessment shows 0 features**
+```bash
+# Solution: Use --features flag explicitly
+claw-corps assess <ID> --features 10 --accept
+```
+
+**Problem: Team assignment failed**
+```bash
+# Solution: Use --confirm flag for non-interactive mode
+claw-corps assign <ID> --confirm
+```
+
+**Problem: Want to check what agents will do**
+```bash
+# Solution: Review team configuration
+claw-corps status <ID>
+cat ~/.claw-corps/projects/<ID>/team.json
+```
 
 ---
 
