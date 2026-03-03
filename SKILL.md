@@ -1,3 +1,26 @@
+---
+name: claw-corps
+description: Multi-agent development orchestration system for OpenClaw - Coordinate AI teams to build complex software projects
+homepage: https://github.com/nbzhaosq/claw-corps
+metadata:
+  {
+    "openclaw":
+      {
+        "emoji": "🦞",
+        "requires": { "bins": ["node", "npm"] },
+        "install":
+          [
+            {
+              "id": "npm-deps",
+              "kind": "npm",
+              "cwd": "{baseDir}",
+              "label": "Install npm dependencies",
+            },
+          ],
+      },
+  }
+---
+
 # Claw Corps 🦞
 
 **Multi-agent development orchestration skill for OpenClaw**
