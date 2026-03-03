@@ -93,6 +93,22 @@ claw-corps list
 - **Complexity Levels**: Simple (0-19) / Medium (20-39) / Complex (40-69) / Enterprise (70+)
 - **Agent Roles**: PM, Architect, Developer, Senior Developer, QA, Designer, DevOps
 
+## Runtime Selection
+
+**Important**: Claw Corps uses two types of runtimes:
+
+1. **ACP Runtime** - For coding agents (Developer/QA)
+   - `claude` (Claude Code)
+   - `opencode` (OpenCode)
+   - `codex` (OpenAI Codex)
+   - `pi` (Pi agent)
+   - `gemini` (Gemini CLI)
+
+2. **Native Subagent Runtime** - For management agents (PM/Architect/Designer)
+   - Your main OpenClaw agent
+
+**Claw Corps automatically selects the correct runtime based on the agent type.**
+
 ## Agent Configuration
 
 **Important**: Claw Corps uses two types of agents:
@@ -342,18 +358,27 @@ claw-corps config --manager-agent main  # or your main agent ID
 
 ### OpenClaw Config
 
-**Required**: Your main agent must be able to spawn subagents.
+**Required**: Enable ACP runtime and allow subagent spawning.
 
-Check your OpenClaw configuration (`~/.config/openclaw/config.json`):
+Check your OpenClaw configuration (`~/.openclaw/openclaw.json`):
 
 ```json5
 {
+  // Enable ACP runtime for coding agents
+  acp: {
+    enabled: true,
+    defaultAgent: "claude",  // Default coding agent
+    dispatch: {
+      enabled: true
+    }
+  },
+
   agents: {
     list: [
       {
-        id: "your-main-agent-id",  // Replace with your actual agent ID
+        id: "your-main-agent-id",  // Your main agent
         subagents: {
-          allowAgents: ["*"]  // Allow all agents, or specify: ["claude-code", "opencode"]
+          allowAgents: ["*"]  // Allow spawning subagents
         }
       }
     ]
@@ -366,12 +391,15 @@ Check your OpenClaw configuration (`~/.config/openclaw/config.json`):
 2. Or use `agents_list` tool in OpenClaw session
 3. Or check the "agent" field in your OpenClaw environment
 
-**Common Agent IDs:**
-- `main` - Default main agent
-- `assistant` - Generic assistant
-- `claude-code` - Claude Code coding agent
-- `opencode` - OpenCode coding agent
-- Custom agents defined in your config
+**ACP Harness IDs:**
+- `claude` - Claude Code (recommended for coding tasks)
+- `opencode` - OpenCode
+- `codex` - OpenAI Codex
+- `pi` - Pi agent
+- `gemini` - Gemini CLI
+
+**Note**: You do NOT need to create OpenClaw agents for coding harnesses!
+Claw Corps uses ACP runtime to call them directly.
 
 ### Project Config
 

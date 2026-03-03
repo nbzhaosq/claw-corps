@@ -57,7 +57,7 @@ export class Orchestrator {
   }
 
   /**
-   * 创建单个 agent（使用 subagents API）
+   * 创建单个 agent（使用 subagents API 或 ACP runtime）
    */
   async createAgent(role) {
     const agentId = `agent_${role}_${uuidv4().split('-')[0]}`;
@@ -82,28 +82,43 @@ export class Orchestrator {
     const model = this.options.model || selectModel(role, project.complexity);
     const thinking = this.options.thinking || selectThinking(role);
     
-    // 根据角色选择 agentId（coding 任务用 coding agent）
+    // 根据角色选择 agentId 和 runtime
     const codingRoles = ['developer', 'senior-developer', 'qa'];
-    const defaultCodingAgent = this.options.codingAgent || 'claude-code';
+    const acpHarnessIds = ['claude', 'opencode', 'codex', 'pi', 'gemini'];
+    
+    // 获取配置的 coding agent
+    const defaultCodingAgent = this.options.codingAgent || project.tool || 'claude';
     const defaultManagerAgent = this.options.managerAgent || 'codemanager';
     
-    const subagentId = codingRoles.includes(role) 
-      ? (project.tool || defaultCodingAgent)
-      : defaultManagerAgent;
+    let subagentId;
+    let useAcpRuntime = false;
+    
+    if (codingRoles.includes(role)) {
+      // Coding role: 使用 ACP runtime
+      subagentId = acpHarnessIds.includes(defaultCodingAgent) 
+        ? defaultCodingAgent 
+        : 'claude';  // 默认使用 claude
+      useAcpRuntime = true;
+    } else {
+      // Management role: 使用 native subagent
+      subagentId = defaultManagerAgent;
+      useAcpRuntime = false;
+    }
 
     try {
       // 调用 OpenClaw subagents API
       const result = await this.client.spawn({
         role,
-        agentId: subagentId,  // 根据角色选择不同的 agent
+        agentId: subagentId,
         task: taskDescription,
         label: `${role}-${project.name}`,
         model,
         thinking,
+        cwd: this.options.workDir || project.workDir,  // 工作目录
         timeout: this.options.timeout || 300
       });
 
-      const { runId, sessionKey } = result;
+      const { runId, sessionKey, runtime } = result;
 
       // 记录映射
       this.sessions.set(runId, role);
@@ -111,10 +126,10 @@ export class Orchestrator {
       Storage.appendAgentLog(
         this.projectId,
         agentId,
-        `Agent created for role: ${roleDef.name}\nAgentId: ${subagentId}\nRunId: ${runId}\nModel: ${model}\nThinking: ${thinking}\nTask: ${taskDescription}`
+        `Agent created for role: ${roleDef.name}\nRuntime: ${runtime || 'subagent'}\nAgentId: ${subagentId}\nRunId: ${runId}\nModel: ${model}\nThinking: ${thinking}\nTask: ${taskDescription}`
       );
 
-      return { agentId, runId, sessionKey, subagentId };
+      return { agentId, runId, sessionKey, subagentId, runtime };
     } catch (error) {
       Storage.appendAgentLog(
         this.projectId,

@@ -19,21 +19,30 @@ export class SubagentsClient {
 
   /**
    * 创建子智能体（非阻塞）
+   * 自动选择 ACP runtime 或 native subagent runtime
    */
   async spawn(options) {
-    const { role, agentId, task, label, model, thinking, timeout } = options;
+    const { role, agentId, task, label, model, thinking, timeout, cwd } = options;
+
+    // 检测是否是 ACP harness
+    const acpHarnessIds = ['claude', 'opencode', 'codex', 'pi', 'gemini'];
+    const useAcpRuntime = acpHarnessIds.includes(agentId);
+
+    const runtime = useAcpRuntime ? 'acp' : 'subagent';
 
     Storage.appendWorkflowLog(
       this.projectId,
-      `🚀 Spawning subagent: ${role} (agentId: ${agentId || 'default'}, model: ${model || 'default'})`
+      `🚀 Spawning subagent: ${role} (runtime: ${runtime}, agentId: ${agentId || 'default'}, model: ${model || 'default'})`
     );
 
     try {
       // 调用 OpenClaw 的 sessions_spawn
       // 注意：这是非阻塞的，立即返回
       const result = await sessions_spawn({
-        agentId,  // 可以指定不同的 agent（如 claude-code）
+        runtime,  // ← 关键：根据 agentId 选择 runtime
+        agentId,  // ACP harness id 或 OpenClaw agent id
         task,
+        cwd,      // 工作目录（对 ACP coding agents 很重要）
         label: label || `claw-corps-${role}-${this.projectId}`,
         model,
         thinking,
@@ -48,18 +57,20 @@ export class SubagentsClient {
         role,
         agentId,
         sessionKey: childSessionKey,
+        runtime,
         status: 'running',
         startedAt: new Date().toISOString()
       });
 
       Storage.appendWorkflowLog(
         this.projectId,
-        `✅ Subagent spawned: ${role} (runId: ${runId}, agent: ${agentId || 'default'})`
+        `✅ Subagent spawned: ${role} (runtime: ${runtime}, runId: ${runId}, agent: ${agentId || 'default'})`
       );
 
       return {
         runId,
         sessionKey: childSessionKey,
+        runtime,
         status: 'accepted'
       };
     } catch (error) {
