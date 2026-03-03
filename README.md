@@ -44,15 +44,23 @@ Init → Assess → Assign → Run → Track → Deliver
 
 You now have access to Claw Corps, a multi-agent development orchestration system for OpenClaw.
 
-## Installation
+## Prerequisites Check
+
+Before using Claw Corps, check your OpenClaw environment:
 
 ```bash
-# Clone and install
+# 1. Install Claw Corps
 cd /tmp
 git clone https://github.com/nbzhaosq/claw-corps.git
 cd claw-corps
 npm install
 npm link  # Makes 'claw-corps' command globally available
+
+# 2. Check your available agents (in OpenClaw session)
+# Use agents_list tool or check your OpenClaw config
+
+# 3. Check environment
+claw-corps env
 ```
 
 ## Basic Commands
@@ -81,7 +89,48 @@ claw-corps list
 - **Project Workflow**: Init → Assess → Assign → Run → Deliver
 - **Complexity Levels**: Simple (0-19) / Medium (20-39) / Complex (40-69) / Enterprise (70+)
 - **Agent Roles**: PM, Architect, Developer, Senior Developer, QA, Designer, DevOps
-- **Auto Selection**: Developer/QA → claude-code (coding), PM/Architect → codemanager (management)
+
+## Agent Configuration
+
+**Important**: Claw Corps uses two types of agents:
+
+1. **Manager Agent** - For PM, Architect, Designer roles (planning/design tasks)
+2. **Coding Agent** - For Developer, QA roles (code writing tasks)
+
+**Default Configuration:**
+- Manager Agent: Uses your main agent (configurable via --manager-agent)
+- Coding Agent: Uses claude-code or opencode (configurable via --coding-agent)
+
+**Check Available Agents:**
+
+```bash
+# In OpenClaw session, check what agents are available:
+# - Look for agents with coding capabilities (claude-code, opencode, etc.)
+# - Note your main agent ID for management tasks
+
+# Update project to use your available agents:
+claw-corps config --coding-agent <your-coding-agent-id>
+claw-corps config --manager-agent <your-manager-agent-id>
+```
+
+**OpenClaw Configuration Required:**
+
+Ensure your OpenClaw config (`~/.config/openclaw/config.json`) allows your main agent to spawn subagents:
+
+```json5
+{
+  agents: {
+    list: [
+      {
+        id: "your-main-agent",  // Replace with your agent ID
+        subagents: {
+          allowAgents: ["*"]  // Or list specific agents: ["claude-code", "opencode"]
+        }
+      }
+    ]
+  }
+}
+```
 
 ## Data Location
 
@@ -96,11 +145,11 @@ claw-corps list
 
 ```bash
 # Example: Create a web application
+# Step 1: Initialize project
 claw-corps init "Task Manager" \
-  --description "A task management web app with user authentication and real-time updates" \
-  --tool claude-code
+  --description "A task management web app with user authentication and real-time updates"
 
-# Assess (will generate PROJECT_ID like proj_xxxxxxxx)
+# Step 2: Assess complexity (will generate PROJECT_ID like proj_xxxxxxxx)
 claw-corps assess proj_12345678 \
   --tech-stack "Next.js React Node.js SQLite" \
   --features 15 \
@@ -109,12 +158,25 @@ claw-corps assess proj_12345678 \
   --high-performance \
   --accept
 
-# Assign team
+# Step 3: Assign team
 claw-corps assign proj_12345678 --confirm
 
-# In OpenClaw environment, use the integration module:
-# const { runProjectFromClawCorps } = await import('/tmp/claw-corps/src/openclaw-integration.js');
-# await runProjectFromClawCorps('proj_12345678', { codingAgent: 'claude-code' });
+# Step 4: Check status
+claw-corps status proj_12345678
+```
+
+**To execute in OpenClaw environment:**
+
+```javascript
+// Import the integration module
+const { runProjectFromClawCorps } = await import('/tmp/claw-corps/src/openclaw-integration.js');
+
+// Run with your available agents
+await runProjectFromClawCorps('proj_12345678', {
+  codingAgent: 'your-coding-agent',    // e.g., 'claude-code', 'opencode'
+  managerAgent: 'your-manager-agent',  // e.g., 'main', 'assistant'
+  timeout: 900
+});
 ```
 
 ## Notes
@@ -249,37 +311,64 @@ claw-corps run proj_xxx --workflow hybrid --timeout 900
 ### For Agent: Check Prerequisites
 
 ```bash
-# Check if Claw Corps is installed
-which claw-corps
+# 1. Check if Claw Corps is installed
+which claw-corps || echo "Need to install Claw Corps first"
 
-# Check environment
+# 2. Check environment and available agents
 claw-corps env
 
-# Check available projects
+# 3. Check current agent configuration
+cat ~/.claw-corps/config.json 2>/dev/null || echo "No config yet"
+
+# 4. Check available projects
 claw-corps list
 
-# Check specific project
+# 5. Check specific project
 claw-corps status <PROJECT_ID>
+```
+
+**Configure Available Agents:**
+
+```bash
+# Set your coding agent (for Developer/QA roles)
+claw-corps config --coding-agent claude-code  # or opencode, etc.
+
+# Set your manager agent (for PM/Architect roles)
+claw-corps config --manager-agent main  # or your main agent ID
 ```
 
 ### OpenClaw Config
 
-Ensure your OpenClaw configuration allows coding agents:
+**Required**: Your main agent must be able to spawn subagents.
+
+Check your OpenClaw configuration (`~/.config/openclaw/config.json`):
 
 ```json5
 {
   agents: {
     list: [
       {
-        id: "codemanager",
+        id: "your-main-agent-id",  // Replace with your actual agent ID
         subagents: {
-          allowAgents: ["claude-code", "opencode"]
+          allowAgents: ["*"]  // Allow all agents, or specify: ["claude-code", "opencode"]
         }
       }
     ]
   }
 }
 ```
+
+**How to Find Your Agent ID:**
+1. Check your OpenClaw config file
+2. Or use `agents_list` tool in OpenClaw session
+3. Or check the "agent" field in your OpenClaw environment
+
+**Common Agent IDs:**
+- `main` - Default main agent
+- `assistant` - Generic assistant
+- `claude-code` - Claude Code coding agent
+- `opencode` - OpenCode coding agent
+- Custom agents defined in your config
 
 ### Project Config
 
@@ -386,12 +475,12 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ```bash
 # Task 1: Create a simple CLI tool
-claw-corps init "CLI Tool" --tool claude-code
+claw-corps init "CLI Tool"
 claw-corps assess <ID> --tech-stack Node.js --features 3 --accept
 claw-corps assign <ID> --confirm
 
 # Task 2: Create a web application
-claw-corps init "Web App" --tool claude-code --description "Full-stack web app"
+claw-corps init "Web App" --description "Full-stack web app"
 claw-corps assess <ID> \
   --tech-stack "Next.js React Node.js" \
   --features 10 \
@@ -400,7 +489,7 @@ claw-corps assess <ID> \
 claw-corps assign <ID> --confirm
 
 # Task 3: Create an API service
-claw-corps init "REST API" --tool claude-code
+claw-corps init "REST API"
 claw-corps assess <ID> \
   --tech-stack "Node.js Express PostgreSQL" \
   --features 8 \
@@ -410,7 +499,26 @@ claw-corps assess <ID> \
 claw-corps assign <ID> --confirm
 ```
 
+**Note**: You don't need to specify --tool at init time. Configure your agents once using:
+```bash
+claw-corps config --coding-agent <your-coding-agent>
+claw-corps config --manager-agent <your-manager-agent>
+```
+
 ### Troubleshooting for Agents
+
+**Problem: Agent not found / subagent spawn failed**
+```bash
+# Solution 1: Check available agents in your OpenClaw environment
+# Use agents_list tool or check ~/.config/openclaw/config.json
+
+# Solution 2: Configure Claw Corps to use your available agents
+claw-corps config --coding-agent <your-available-coding-agent>
+claw-corps config --manager-agent <your-available-manager-agent>
+
+# Solution 3: Check OpenClaw config allows subagents
+# Ensure your main agent has: subagents: { allowAgents: ["*"] }
+```
 
 **Problem: Project not found**
 ```bash
