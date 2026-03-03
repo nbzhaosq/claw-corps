@@ -3,3 +3,8 @@ node_modules/
 *.log
 .env
 .env.local
+
+# Lock files (use npm install with your own registry)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
