@@ -203,8 +203,12 @@ export class Orchestrator {
         Storage.appendAgentLog(
           this.projectId,
           agent.agentId,
-          `⚠️ Failed to steer agent: ${error.message}\n`
+          `❌ Failed to steer agent: ${error.message}\n`
         );
+        // 标记 agent 为错误状态，而不是静默失败
+        agent.status = 'error';
+        agent.steerError = error.message;
+        throw new Error(`Failed to assign task to ${role}: ${error.message}`);
       }
     }
 
@@ -352,13 +356,34 @@ export class Orchestrator {
       // 等待所有活跃的子智能体
       await this.client.waitForAll(timeout);
       
-      const results = spawned.map(({ task, agent }) => ({
-        taskId: task.id,
-        status: 'completed',
-        output: `Completed: ${task.description}`,
-        agentId: agent.agentId,
-        runId: agent.runId
-      }));
+      // 获取每个子智能体的实际状态
+      const results = await Promise.all(
+        spawned.map(async ({ task, agent }) => {
+          let status = 'completed';
+          let output = `Completed: ${task.description}`;
+          
+          if (agent.runId) {
+            try {
+              const info = await this.client.getInfo(agent.runId);
+              if (info) {
+                status = info.status === 'error' ? 'failed' : (info.status || 'completed');
+                output = info.output || output;
+              }
+            } catch (e) {
+              status = 'unknown';
+              output = `Failed to get status: ${e.message}`;
+            }
+          }
+          
+          return {
+            taskId: task.id,
+            status,
+            output,
+            agentId: agent.agentId,
+            runId: agent.runId
+          };
+        })
+      );
 
       spinner.succeed('All parallel tasks completed');
       return results;

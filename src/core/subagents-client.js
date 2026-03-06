@@ -47,7 +47,9 @@ export class SubagentsClient {
         model,
         thinking,
         runTimeoutSeconds: timeout || 300,
-        cleanup: 'keep' // 保留会话以便查看历史
+        mode: 'run',   // 新增: 运行模式
+        cleanup: 'keep', // 保留会话以便查看历史
+        thread: true   // 新增: 启用线程模式
       });
 
       const { runId, childSessionKey } = result;
@@ -120,7 +122,12 @@ export class SubagentsClient {
       });
       return result;
     } catch (error) {
-      return null;
+      Storage.appendWorkflowLog(
+        this.projectId,
+        `⚠️ Failed to get info for ${runId}: ${error.message}`
+      );
+      // 返回错误对象而不是 null，让调用者知道发生了什么
+      return { error: true, message: error.message, runId };
     }
   }
 
@@ -248,7 +255,8 @@ export class SubagentsClient {
    */
   async waitForCompletion(runId, timeout = 300000) {
     const startTime = Date.now();
-    const pollInterval = 5000; // 5秒检查一次
+    let pollInterval = 2000;  // 从2秒开始
+    const maxPollInterval = 30000; // 最大30秒
 
     while (Date.now() - startTime < timeout) {
       const info = await this.getInfo(runId);
@@ -263,11 +271,17 @@ export class SubagentsClient {
         if (run) {
           run.status = info.status;
         }
+        // 清理内存，避免泄漏
+        this.activeRuns.delete(runId);
         return { status: info.status, runId, info };
       }
 
-      // 等待后重试
-      await new Promise(resolve => setTimeout(resolve, pollInterval));
+      // 指数退避 + 随机抖动
+      const jitter = Math.random() * 1000;  // 0-1秒随机抖动
+      await new Promise(resolve => setTimeout(resolve, pollInterval + jitter));
+      
+      // 增加轮询间隔，但不超过最大值
+      pollInterval = Math.min(pollInterval * 1.5, maxPollInterval);
     }
 
     throw new Error(`Subagent ${runId} timed out after ${timeout}ms`);

@@ -41,7 +41,10 @@ export async function runProject(projectId, options) {
   // 初始化 orchestrator
   const orchestrator = new Orchestrator(projectId, {
     workDir: options.workDir,
-    timeout: options.timeout
+    timeout: options.timeout,
+    codingAgent: options.codingAgent,
+    managerAgent: options.managerAgent,
+    workflow: options.workflow
   });
   
   try {

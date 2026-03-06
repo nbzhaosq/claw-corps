@@ -79,7 +79,7 @@ program
   .description('Start project execution')
   .option('-w, --workflow <type>', 'Workflow type (serial|parallel|hybrid)', 'hybrid')
   .option('-d, --work-dir <path>', 'Working directory for code output')
-  .option('--timeout <ms>', 'Task timeout in milliseconds', parseInt)
+  .option('--timeout <seconds>', 'Task timeout in seconds (default: 300)', parseInt)
   .option('--coding-agent <agentId>', 'Agent for coding tasks (claude-code|opencode)', 'claude-code')
   .option('--manager-agent <agentId>', 'Agent for management tasks', 'codemanager')
   .action(async (projectId, options) => {

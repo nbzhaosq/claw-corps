@@ -292,10 +292,16 @@ export class SafeConcurrentExecutor {
       console.log(`   🚀 ${role} 开始执行 (${agentId})`);
       
       const result = await sessions_spawn({
+        runtime: 'acp',  // 使用 ACP runtime
         agentId,
         task: task.description,
         cwd: workDir || process.cwd(),
-        label: `${role}-${this.projectId}`
+        label: `${role}-${this.projectId}`,
+        model: 'claude-3-sonnet',  // 默认模型
+        thinking: 'medium',     // 默认思考级别
+        runTimeoutSeconds: 300,  // 5分钟超时
+        mode: 'run',
+        cleanup: 'keep'
       });
       
       // 等待完成
@@ -315,22 +321,90 @@ export class SafeConcurrentExecutor {
    * 文件锁管理
    */
   checkFileLocks(patterns) {
+    if (!patterns || patterns.length === 0) return [];
+    
     const locked = [];
-    // 实现文件锁检查
+    for (const pattern of patterns) {
+      // Skip negation patterns
+      if (pattern.startsWith('!')) continue;
+      
+      for (const [file, lock] of this.fileLocks) {
+        // Simple pattern matching (supports * and **)
+        const regex = this.patternToRegex(pattern);
+        if (regex.test(file)) {
+          locked.push({ file, pattern, owner: lock.owner, lockedAt: lock.time });
+        }
+      }
+    }
     return locked;
   }
   
   acquireFileLocks(patterns, owner) {
-    // 实现文件锁获取
+    if (!patterns || patterns.length === 0) return;
+    
+    for (const pattern of patterns) {
+      if (pattern.startsWith('!')) continue;
+      
+      // Check for existing lock
+      const existing = this.fileLocks.get(pattern);
+      if (existing && existing.owner !== owner) {
+        throw new Error(`File pattern '${pattern}' is already locked by ${existing.owner}`);
+      }
+      
+      this.fileLocks.set(pattern, {
+        owner,
+        time: Date.now()
+      });
+    }
   }
   
   releaseFileLocks(patterns) {
-    // 实现文件锁释放
+    if (!patterns || patterns.length === 0) return;
+    
+    for (const pattern of patterns) {
+      this.fileLocks.delete(pattern);
+    }
   }
   
-  waitForFileUnlock(files) {
-    // 等待文件解锁
-    return new Promise(resolve => setTimeout(resolve, 1000));
+  waitForFileUnlock(files, maxWait = 60000) {
+    const startTime = Date.now();
+    let interval = 1000;
+    
+    return new Promise((resolve, reject) => {
+      const check = () => {
+        const stillLocked = this.checkFileLocks(
+          files.map(f => f.file || f)
+        );
+        
+        if (stillLocked.length === 0) {
+          resolve();
+          return;
+        }
+        
+        if (Date.now() - startTime > maxWait) {
+          reject(new Error(`Timeout waiting for files to unlock: ${stillLocked.map(f => f.file).join(', ')}`));
+          return;
+        }
+        
+        // Exponential backoff
+        setTimeout(check, interval);
+        interval = Math.min(interval * 1.5, 5000);
+      };
+      check();
+    });
+  }
+  
+  /**
+   * Convert glob pattern to regex
+   */
+  patternToRegex(pattern) {
+    const regexStr = pattern
+      .replace(/\*\*/g, '<<DOUBLE_STAR>>')
+      .replace(/\*/g, '[^/]*')
+      .replace(/<<DOUBLE_STAR>>/g, '.*')
+      .replace(/\./g, '\\.')
+      .replace(/\?/g, '[^/]');
+    return new RegExp(`^${regexStr}$`);
   }
   
   waitForCompletion(runId) {
